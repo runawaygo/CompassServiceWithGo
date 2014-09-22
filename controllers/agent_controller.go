@@ -2,10 +2,10 @@ package agent
 
 import (
 	"encoding/json"
+	"fmt"
 	"github.com/garyburd/redigo/redis"
 	// "github.com/pavben/elise/utils/csv"
 	"net/http"
-	"os"
 )
 
 type Market struct {
@@ -18,12 +18,22 @@ type Market struct {
 
 type MarketRepo interface {
 	GetMarketByMarketId(marketId string) Market
+	SetMarketAgentByMarketId(marketId string, agent string) Market
 }
 
 type MarketMap map[string]Market
 
 func (m MarketMap) GetMarketByMarketId(marketId string) Market {
 	return m[marketId]
+}
+
+func (m MarketMap) SetMarketAgentByMarketId(marketId string, agent string) Market {
+	market := m[marketId]
+	market.Agent = agent
+
+	m[marketId] = market
+
+	return market
 }
 
 func newMarket() *Market {
@@ -41,23 +51,18 @@ func GetMockMarket() *Market {
 	return market
 }
 
-func SetAgent(conn redis.Conn) []byte {
-
-	market := newMarket()
-	market.Id = "123"
-	market.Name = "superwolf"
-	market.Code = "superowlf"
-	market.Agent = "superwolf"
-
-	marketJson, _ := json.Marshal(market)
-	conn.Do("set", market.Id, marketJson)
-	os.Stdout.Write(marketJson)
-	return marketJson
+func SetAgent(conn redis.Conn, marketRepo MarketRepo) string {
+	fmt.Println(marketRepo.GetMarketByMarketId("12"))
+	marketRepo.SetMarketAgentByMarketId("12", "tt")
+	return ""
 }
 
 func Agent(request *http.Request, marketRepo MarketRepo) string {
 	qs := request.URL.Query()
 	marketId := qs.Get("marketId")
+	if marketId == "122" {
+		panic("superwolf")
+	}
 	market := marketRepo.GetMarketByMarketId(marketId)
 	marketJson, _ := json.Marshal(market)
 	return string(marketJson)

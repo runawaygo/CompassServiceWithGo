@@ -19,22 +19,7 @@ import (
 func main() {
 	m := martini.Classic()
 	m.Use(redismw("tcp", "127.0.0.1:6379"))
-	m.Use(func(c martini.Context) {
-		marketMap := agent.MarketMap{}
-		values, _ := csv.ReadCsvFile("./verders/agent.csv")
-		for i := 0; i < len(values); i++ {
-			rate, _ := strconv.ParseFloat(values[i][4], 64)
-			marketMap[values[i][0]] = agent.Market{
-				Id:    values[i][0],
-				Name:  values[i][1],
-				Code:  values[i][2],
-				Agent: values[i][3],
-				Rate:  rate,
-			}
-		}
-
-		c.MapTo(marketMap, (*agent.MarketRepo)(nil))
-	})
+	m.Use(agentMarketMap())
 	m.Get("/", func() string {
 		return "Hello world!"
 	})
@@ -50,6 +35,24 @@ func main() {
 	m.Get("/agent", agent.Agent)
 	m.Get("/set", agent.SetAgent)
 	m.Run()
+}
+
+func agentMarketMap() martini.Handler {
+	marketMap := agent.MarketMap{}
+	values, _ := csv.ReadCsvFile("./verders/agent.csv")
+	for i := 0; i < len(values); i++ {
+		rate, _ := strconv.ParseFloat(values[i][4], 64)
+		marketMap[values[i][0]] = agent.Market{
+			Id:    values[i][0],
+			Name:  values[i][1],
+			Code:  values[i][2],
+			Agent: values[i][3],
+			Rate:  rate,
+		}
+	}
+	return func(c martini.Context) {
+		c.MapTo(&marketMap, (*agent.MarketRepo)(nil))
+	}
 }
 
 func redismw(proto, addr string) martini.Handler {
