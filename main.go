@@ -1,7 +1,10 @@
 package main
 
 import (
+	"io"
+	"log"
 	"net/http"
+	"os"
 	"strconv"
 	"time"
 )
@@ -20,10 +23,8 @@ func main() {
 	m := martini.Classic()
 	m.Use(redismw("tcp", "127.0.0.1:6379"))
 	m.Use(agentMarketMap())
-	m.Get("/", func() string {
-		return "Hello world!"
-	})
-	m.Get("/r", func(request *http.Request, conn redis.Conn) string {
+
+	m.Get("/r ", func(request *http.Request, conn redis.Conn) string {
 		qs := request.URL.Query()
 		conn.Do("set", "name", "abc")
 		reply, err := redis.String(conn.Do("get", "name"))
@@ -32,14 +33,23 @@ func main() {
 		}
 		return reply + qs.Get("name")
 	})
-	m.Get("/agent", agent.Agent)
-	m.Get("/set", agent.SetAgent)
+	m.Get("/preload/config", func(res http.ResponseWriter) {
+		out, err := os.Open("./venders/serviceconfig/preload.config.json")
+
+		if err != nil {
+			log.Fatalln(err)
+		}
+		io.Copy(res, out)
+	})
+	m.Get("/agent", agent.GetMarket)
+	m.Post("/agent", agent.SetMarket)
+	m.Get("/agent/index", agent.GetAllMarket)
 	m.Run()
 }
 
 func agentMarketMap() martini.Handler {
 	marketMap := agent.MarketMap{}
-	values, _ := csv.ReadCsvFile("./verders/agent.csv")
+	values, _ := csv.ReadCsvFile("./venders/serviceconfig/marketList.csv")
 	for i := 0; i < len(values); i++ {
 		rate, _ := strconv.ParseFloat(values[i][4], 64)
 		marketMap[values[i][0]] = agent.Market{

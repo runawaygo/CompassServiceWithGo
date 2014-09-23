@@ -4,16 +4,16 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/garyburd/redigo/redis"
-	// "github.com/pavben/elise/utils/csv"
 	"net/http"
+	"strings"
 )
 
 type Market struct {
-	Id    string  `json:"id,omitempty"`
-	Name  string  `json:"name,omitempty"`
-	Code  string  `json:"code,omitempty"`
-	Agent string  `json:"agent,omitempty"`
-	Rate  float64 `json:"rate,omitempty"`
+	Id    string  `json:"id"`
+	Name  string  `json:"name"`
+	Code  string  `json:"code"`
+	Agent string  `json:"agent"`
+	Rate  float64 `json:"rate"`
 }
 
 type MarketRepo interface {
@@ -42,19 +42,35 @@ func newMarket() *Market {
 	return market
 }
 
-func GetMockMarket() *Market {
-	market := newMarket()
-	market.Id = "123"
-	market.Name = "superwolf"
-	market.Code = "superowlf"
-	market.Agent = "superwolf"
-	return market
+func SetMarket(request *http.Request, conn redis.Conn, marketRepo MarketRepo) string {
+	id, agent := request.FormValue("id"), request.FormValue("agent")
+	marketRepo.SetMarketAgentByMarketId(id, agent)
+
+	market := marketRepo.GetMarketByMarketId(id)
+	marketJson, _ := json.Marshal(market)
+
+	return string(marketJson)
 }
 
-func SetAgent(conn redis.Conn, marketRepo MarketRepo) string {
-	fmt.Println(marketRepo.GetMarketByMarketId("12"))
-	marketRepo.SetMarketAgentByMarketId("12", "tt")
-	return ""
+func GetMarket(request *http.Request, conn redis.Conn) string {
+	var market Market
+	qs := request.URL.Query()
+	marketId := qs.Get("marketId")
+	reply, _ := redis.Bytes(conn.Do("get", marketId))
+	json.Unmarshal(reply, &market)
+	return string(reply)
+}
+
+func GetAllMarket(conn redis.Conn) string {
+	values, _ := redis.Strings(conn.Do("hgetall", "superwolf"))
+	marketArray := []string{}
+	for i := 1; i < len(values); i += 2 {
+		fmt.Println(values[i])
+		marketArray = append(marketArray, values[i])
+	}
+
+	resultString := "[" + strings.Join(marketArray, ",") + "]"
+	return resultString
 }
 
 func Agent(request *http.Request, marketRepo MarketRepo) string {

@@ -1,0 +1,3 @@
+[submodule "venders/serviceconfig"]
+	path = venders/serviceconfig
+	url = git@gitlab.baidao.com:mobilerd/serviceconfig.git
